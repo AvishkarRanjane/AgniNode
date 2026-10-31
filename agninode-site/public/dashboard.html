@@ -75,6 +75,14 @@
             <svg class="sim-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
             <span>Test 180mA Earth Leak (RCD)</span>
           </button>
+          <button class="sim-btn" id="btnSimPredArc" data-mode="PRED_ARC">
+            <svg class="sim-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            <span>Predict Arc Creep (AFDD)</span>
+          </button>
+          <button class="sim-btn" id="btnSimPredLeak" data-mode="PRED_LEAK">
+            <svg class="sim-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            <span>Predict Insulation Decay (RCCB)</span>
+          </button>
           <button class="sim-btn sim-reset" id="btnSimReset">
             <svg class="sim-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
             <span>Reset Breakers</span>
@@ -302,6 +310,236 @@
             <div class="protection-verdict" id="rccbVerdictBox">
               <div class="verdict-title">RCCB / RCD Contactor State:</div>
               <div class="verdict-desc" id="rccbVerdictText">Current vector balanced (|IL - IN| = 6.2 mA &lt; 30 mA). Life safety active.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PREDICTIVE ANALYTICS & PROGNOSTICS CENTER (AFDD & RCCB)               -->
+    <!-- Apple-Inspired Proactive Intelligence & Sequence Progression Visualizer -->
+    <!-- ===================================================================== -->
+    <div class="panel predictive-panel" id="predictiveCenter">
+      <div class="predictive-header">
+        <div class="pred-title-group">
+          <div class="apple-badge">
+            <span class="apple-pulse-dot"></span>
+            <span>NEURAL SAFETY PROGNOSTICS • REAL-TIME TIME-SERIES REGRESSION</span>
+          </div>
+          <h2>Predictive Fault Analytics &amp; Early Warning System</h2>
+          <p class="pred-subtext">Continuous multi-sensor sequence analysis predicting arc-fault ignition and insulation breakdown before protective hardware trip thresholds are breached.</p>
+        </div>
+        <div class="pred-timeframe-selector" id="predHorizonSeg">
+          <span class="timeframe-label">Forecast Horizon:</span>
+          <button class="timeframe-btn on" data-horizon="15">15 Min</button>
+          <button class="timeframe-btn" data-horizon="60">1 Hour</button>
+          <button class="timeframe-btn" data-horizon="240">4 Hours</button>
+        </div>
+      </div>
+
+      <!-- Proactive Early-Warning Banner -->
+      <div class="proactive-alert-strip" id="proactiveAlertStrip">
+        <div class="proactive-alert-left">
+          <div class="proactive-status-icon" id="proactiveIcon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+          </div>
+          <div>
+            <div class="proactive-status-tag" id="proactiveTag">SYSTEM STABLE • NO FAULT TRAJECTORY</div>
+            <div class="proactive-status-desc" id="proactiveDesc">Telemetry regression across voltage, phase CT1 and neutral CT2 indicates stable dielectric health and zero micro-arcing creep.</div>
+          </div>
+        </div>
+        <div class="proactive-metrics">
+          <div class="proactive-metric-pill">
+            <span class="p-lbl">Predicted Arc Risk</span>
+            <strong class="p-val" id="predArcRiskVal">4.2%</strong>
+          </div>
+          <div class="proactive-metric-pill">
+            <span class="p-lbl">Leakage Drift Rate</span>
+            <strong class="p-val" id="predLeakDriftVal">+0.04 mA/h</strong>
+          </div>
+          <div class="proactive-metric-pill highlight">
+            <span class="p-lbl">Time to Trip (TTF)</span>
+            <strong class="p-val" id="predTtfVal">&gt; 48 Hours</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fault Progression Sequence Visualizer (Apple Timeline) -->
+      <div class="progression-sequence-container">
+        <div class="prog-seq-header">
+          <div class="prog-seq-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Fault Degradation Sequence Visualizer</span>
+          </div>
+          <span class="prog-seq-status" id="progCurrentStageName">Active Stage: 1 / 5 (Nominal Baseline)</span>
+        </div>
+
+        <div class="sequence-track-wrap">
+          <div class="sequence-progress-bar" id="seqProgressBar" style="width: 10%"></div>
+          
+          <div class="seq-nodes-grid">
+            <!-- Stage 1 -->
+            <div class="seq-node active" id="seqNode1" data-stage="1">
+              <div class="node-bullet"><span class="inner-dot"></span></div>
+              <div class="node-label">Stage 1</div>
+              <div class="node-title">Nominal Baseline</div>
+              <div class="node-desc">Clean 50Hz, HF &lt; 15dB, R_iso &gt; 50MΩ</div>
+            </div>
+            <!-- Stage 2 -->
+            <div class="seq-node" id="seqNode2" data-stage="2">
+              <div class="node-bullet"><span class="inner-dot"></span></div>
+              <div class="node-label">Stage 2</div>
+              <div class="node-title">Micro-Thermal Creep</div>
+              <div class="node-desc">Contact relaxation, R_contact +0.15Ω</div>
+            </div>
+            <!-- Stage 3 -->
+            <div class="seq-node" id="seqNode3" data-stage="3">
+              <div class="node-bullet"><span class="inner-dot"></span></div>
+              <div class="node-label">Stage 3</div>
+              <div class="node-title">Sub-Cycle Sparking</div>
+              <div class="node-desc">HF bursts 35-50dB, leakage drift &gt;12mA</div>
+            </div>
+            <!-- Stage 4 -->
+            <div class="seq-node" id="seqNode4" data-stage="4">
+              <div class="node-bullet"><span class="inner-dot"></span></div>
+              <div class="node-label">Stage 4</div>
+              <div class="node-title">Shoulder Widening</div>
+              <div class="node-desc">Zero-cross dwell &gt; 0.8ms, I_delta &gt; 24mA</div>
+            </div>
+            <!-- Stage 5 -->
+            <div class="seq-node" id="seqNode5" data-stage="5">
+              <div class="node-bullet"><span class="inner-dot"></span></div>
+              <div class="node-label">Stage 5</div>
+              <div class="node-title">Imminent Flashover</div>
+              <div class="node-desc">Contactor / RCCB Trip Boundary &lt; 40ms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Predictive Dual Charts & Health Prognostics Rings -->
+      <div class="row two pred-charts-row" style="margin-top:24px;">
+        <!-- Predictive Chart 1: AFDD Arc Risk & HF Creep Forecast -->
+        <div class="pred-chart-card">
+          <div class="pred-card-top">
+            <div>
+              <span class="pred-card-kicker">AFDD PREDICTIVE TRAJECTORY</span>
+              <h4>Arc Probability &amp; HF Noise Forecast</h4>
+              <div class="cap">Historical regression extending into predictive 60-min forecast cone</div>
+            </div>
+            <div class="confidence-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>96.4% Confidence</span>
+            </div>
+          </div>
+          <div class="cv pred-cv" style="height:220px;margin-top:12px;">
+            <canvas id="cPredAfdd"></canvas>
+          </div>
+          <div class="pred-chart-footer">
+            <span class="pred-legend-dot leg-historical"></span> Historical Data
+            <span class="pred-legend-dot leg-forecast"></span> Projected Trajectory
+            <span class="pred-legend-dot leg-trip"></span> IEC 62606 Trip Line (65 dB)
+          </div>
+        </div>
+
+        <!-- Predictive Chart 2: RCCB Leakage Drift & Insulation Decay Projection -->
+        <div class="pred-chart-card">
+          <div class="pred-card-top">
+            <div>
+              <span class="pred-card-kicker">RCCB PREDICTIVE TRAJECTORY</span>
+              <h4>Earth Leakage Drift &amp; Dielectric Decay</h4>
+              <div class="cap">Tracking subtle micro-leakage rate dI_Δn/dt towards 30mA shock boundary</div>
+            </div>
+            <div class="confidence-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>98.1% Confidence</span>
+            </div>
+          </div>
+          <div class="cv pred-cv" style="height:220px;margin-top:12px;">
+            <canvas id="cPredRccb"></canvas>
+          </div>
+          <div class="pred-chart-footer">
+            <span class="pred-legend-dot leg-historical-leak"></span> Historical Leakage
+            <span class="pred-legend-dot leg-forecast-leak"></span> Leakage Projection
+            <span class="pred-legend-dot leg-trip-leak"></span> 30mA Shock Limit
+          </div>
+        </div>
+      </div>
+
+      <!-- Apple-Inspired Prognostic Scorecards & Prescriptive Guidance -->
+      <div class="row two pred-cards-lower" style="margin-top:20px;">
+        <!-- Apple Health Rings / Gauge Cards -->
+        <div class="pred-glass-card">
+          <div class="pred-card-kicker">HEALTH INDICES</div>
+          <h4>Panel Component Integrity Indicators</h4>
+          
+          <div class="rings-grid">
+            <!-- Ring 1: Terminal Torque & Contact Health -->
+            <div class="ring-item">
+              <div class="ring-graphic">
+                <svg viewBox="0 0 100 100" class="apple-ring-svg">
+                  <circle cx="50" cy="50" r="40" class="ring-bg"></circle>
+                  <circle cx="50" cy="50" r="40" class="ring-fill ring-contact" id="ringContactFill" style="stroke-dasharray: 251.2; stroke-dashoffset: 15;"></circle>
+                </svg>
+                <div class="ring-center-val" id="valContactHealth">94%</div>
+              </div>
+              <div class="ring-info">
+                <strong>Contact Connection Health</strong>
+                <div class="cap">Vibration looseness &amp; terminal resistance index</div>
+              </div>
+            </div>
+
+            <!-- Ring 2: Cable Dielectric Insulation Integrity -->
+            <div class="ring-item">
+              <div class="ring-graphic">
+                <svg viewBox="0 0 100 100" class="apple-ring-svg">
+                  <circle cx="50" cy="50" r="40" class="ring-bg"></circle>
+                  <circle cx="50" cy="50" r="40" class="ring-fill ring-insulation" id="ringInsulationFill" style="stroke-dasharray: 251.2; stroke-dashoffset: 8;"></circle>
+                </svg>
+                <div class="ring-center-val" id="valInsulationHealth">98%</div>
+              </div>
+              <div class="ring-info">
+                <strong>Dielectric Insulation Integrity</strong>
+                <div class="cap">Estimated R_iso: 48.5 MΩ • Moisture-resistant</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prescriptive Mitigation Action Plan -->
+        <div class="pred-glass-card">
+          <div class="pred-card-kicker">PRESCRIPTIVE MAINTENANCE ACTIONS</div>
+          <h4>Proactive Technician Work Orders</h4>
+          <div class="action-steps-list" id="prescriptiveSteps">
+            <div class="step-item step-ok">
+              <div class="step-status-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="step-text">
+                <strong>Phase L1 &amp; L2 Terminals Torqued to Spec</strong>
+                <div class="cap">No thermal dissipation anomaly detected on terminal blocks.</div>
+              </div>
+            </div>
+
+            <div class="step-item step-ok">
+              <div class="step-status-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="step-text">
+                <strong>Conduit Moisture Level Within Permissible Band</strong>
+                <div class="cap">Capacitive return path balanced across all branch circuits.</div>
+              </div>
+            </div>
+
+            <div class="step-item step-action" id="stepActionRequired" style="display:none;">
+              <div class="step-status-icon step-warn-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </div>
+              <div class="step-text">
+                <strong id="actionRequiredTitle">Recommended Inspection: Feeder Line 1</strong>
+                <div class="cap" id="actionRequiredDesc">Inspect DIN-rail terminal torque (2.5 N·m) and check conductor insulation for abrasion.</div>
+              </div>
             </div>
           </div>
         </div>

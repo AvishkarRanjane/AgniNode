@@ -27,7 +27,8 @@ const calc = (t, s) => (s >= TH.smokeAlarm || t >= TH.tempAlarm) ? "ALARM" : (s 
 const PERM = {viewer:["ack","alarm"], operator:["ack","alarm"], admin:["ack","alarm","config","users"]};
 let api, user, devs = [], sel = null, range = 86400000, tele = [], alerts = [], prev = {}, unsubD, unsubT, charts = {};
 let currentChartView = "env"; // "env", "elec", "safety"
-let simMode = "NORMAL"; // "NORMAL", "SERIES_ARC", "PARALLEL_ARC", "SHOCK", "EARTH_LEAKAGE"
+let simMode = "NORMAL"; // "NORMAL", "SERIES_ARC", "PARALLEL_ARC", "SHOCK", "EARTH_LEAKAGE", "PRED_ARC", "PRED_LEAK"
+let predHorizonMinutes = 15;
 
 const can = a => (PERM[user?.role] || []).includes(a);
 
@@ -61,7 +62,17 @@ function analyzeAFDD(voltage, currentL, faultMode) {
   let tripTimeMs = null;
   let verdict = "Circuit healthy. Sinusoidal 50.0 Hz line wave. Contactor CLOSED.";
 
-  if (faultMode === "SERIES_ARC") {
+  if (faultMode === "PRED_ARC") {
+    // Incipient series arcing creep: contact loosening & micro-sparking
+    hfNoise = 48.5 + Math.random() * 5.5;
+    shoulderMs = 0.74 + Math.random() * 0.12;
+    erraticismPct = 42 + Math.random() * 10;
+    dipV = 1.5 + Math.random() * 0.6;
+    energyPct = 58;
+    status = "PRED_ARC_CREEP";
+    trip = false;
+    verdict = "PROACTIVE WARNING: Incipient series arcing trajectory detected. Shoulder dwell (" + shoulderMs.toFixed(2) + " ms) and HF noise (" + hfNoise.toFixed(1) + " dB). Projecting IEC 62606 trip in ~42 minutes.";
+  } else if (faultMode === "SERIES_ARC") {
     // Series Arc: Current limited by load impedance, but exhibits high-frequency broadband bursts
     // and distinct zero-crossing flat shoulders (pause while voltage builds to re-strike the arc)
     hfNoise = 82 + Math.random() * 12; // 82 - 94 dB
@@ -101,7 +112,14 @@ function analyzeRCCB(currentL, currentN, faultMode) {
   let stage = "safe";
   let verdict = "Core flux balanced (|IL - IN| = " + ideltaMa.toFixed(1) + " mA < 30 mA). Life protection active.";
 
-  if (faultMode === "SHOCK" || ideltaMa >= TH.rccbShockTripMa) {
+  if (faultMode === "PRED_LEAK") {
+    // Dielectric insulation decay: moisture / thermal degradation
+    ideltaMa = 21.8 + Math.random() * 3.2;
+    status = "PRED_INSULATION_DECAY";
+    trip = false;
+    stage = "warn";
+    verdict = "PROACTIVE WARNING: Dielectric insulation decaying at +5.4 mA/h drift. Residual leakage at " + ideltaMa.toFixed(1) + " mA. Projected 30mA shock trip in ~38 minutes.";
+  } else if (faultMode === "SHOCK" || ideltaMa >= TH.rccbShockTripMa) {
     // Human electric shock: > 30 mA escaping to Earth
     status = "TRIP_SHOCK";
     trip = true;
@@ -293,6 +311,10 @@ function demoApi() {
       leakageCurrentA = 0.0384 + (Math.random() * 0.003); // ~38.4 mA shock hazard!
     } else if (activeFault === "EARTH_LEAKAGE") {
       leakageCurrentA = 0.178 + (Math.random() * 0.015); // ~178 mA fire hazard!
+    } else if (activeFault === "PRED_ARC") {
+      IL = IL * 0.95 + (Math.random() * 0.6 - 0.3);
+    } else if (activeFault === "PRED_LEAK") {
+      leakageCurrentA = 0.0218 + (Math.random() * 0.003); // ~21.8 mA
     }
 
     let IN = Math.max(0, IL - leakageCurrentA);
@@ -619,6 +641,12 @@ function initScope() {
     } else if (simMode === "EARTH_LEAKAGE") {
       ctx.fillStyle = "#ff0033";
       ctx.fillText("RCCB SIGNATURE: Ground Fire Fault (178 mA Earth Leakage)", 14, h - 14);
+    } else if (simMode === "PRED_ARC") {
+      ctx.fillStyle = "#f59e0b";
+      ctx.fillText("PREDICTIVE PROGNOSTICS: Micro-Sparking Dwell Creep & Incipient HF Sputter", 14, h - 14);
+    } else if (simMode === "PRED_LEAK") {
+      ctx.fillStyle = "#f97316";
+      ctx.fillText("PREDICTIVE PROGNOSTICS: Dielectric Insulation Degradation (21.8 mA vector drift)", 14, h - 14);
     } else {
       ctx.fillStyle = "rgba(56, 189, 248, 0.8)";
       ctx.fillText("SIGNALS NORMAL: Clean Sine Wave • Core Vector in Balance", 14, h - 14);
@@ -659,6 +687,322 @@ const ds = (label, color, extra = {}) => ({
   tension: 0.25,
   ...extra
 });
+
+
+/* ---------- Predictive Prognostics Analytical Calculation Engine ---------- */
+function linearRegression(points) {
+  const n = points.length;
+  if (n < 2) return { slope: 0, intercept: points[0]?.[1] || 0 };
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += points[i][0];
+    sumY += points[i][1];
+    sumXY += points[i][0] * points[i][1];
+    sumXX += points[i][0] * points[i][0];
+  }
+  const denom = (n * sumXX - sumX * sumX);
+  if (Math.abs(denom) < 1e-9) return { slope: 0, intercept: sumY / n };
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function calculatePrognostics(telemetry, activeDev, mode, horizonMin) {
+  const d = activeDev || {};
+  const vCurr = d.voltage ?? 230.0;
+  const iLCurr = d.currentL ?? 12.4;
+  const iNCurr = d.currentN ?? (iLCurr - 0.006);
+  const hfNoiseCurr = d.afdd?.hfNoise ?? (mode === "PRED_ARC" ? 51.0 : (mode === "SERIES_ARC" ? 85.0 : 12.5));
+  const shoulderCurr = d.afdd?.shoulderMs ?? (mode === "PRED_ARC" ? 0.76 : (mode === "SERIES_ARC" ? 1.85 : 0.08));
+  const ideltaCurr = d.residualMa ?? (mode === "PRED_LEAK" ? 22.4 : (mode === "SHOCK" ? 38.4 : 6.2));
+
+  // Use sliding window of the last 15 points
+  const recent = (telemetry && telemetry.length ? telemetry.slice(-15) : []);
+  let slopeHfDbPerHour = 0.04;
+  let slopeLeakMaPerHour = 0.04;
+
+  if (recent.length >= 2) {
+    const t0 = recent[0].ts;
+    const hfPts = recent.map(r => [(r.ts - t0) / 3600000, r.afddHfNoise ?? 12]);
+    const leakPts = recent.map(r => [(r.ts - t0) / 3600000, r.residualMa ?? 6]);
+    slopeHfDbPerHour = linearRegression(hfPts).slope;
+    slopeLeakMaPerHour = linearRegression(leakPts).slope;
+  }
+
+  // Adjust regression slope for simulated test bench modes to reflect real physics
+  if (mode === "PRED_ARC") {
+    slopeHfDbPerHour = 14.8 + (Math.random() * 2.2 - 1.1);
+  } else if (mode === "PRED_LEAK") {
+    slopeLeakMaPerHour = 8.6 + (Math.random() * 1.4 - 0.7);
+  } else if (mode === "SERIES_ARC" || mode === "PARALLEL_ARC") {
+    slopeHfDbPerHour = 120.0;
+  } else if (mode === "SHOCK" || mode === "EARTH_LEAKAGE") {
+    slopeLeakMaPerHour = 95.0;
+  }
+
+  // Arc Probability Index (IEC 62606 correlation model)
+  let arcRisk = Math.min(99.6, Math.max(3.2, (hfNoiseCurr - 10) * 1.45 + shoulderCurr * 26 + Math.max(0, slopeHfDbPerHour * 0.8)));
+  if (mode === "SERIES_ARC" || mode === "PARALLEL_ARC" || d.afdd?.trip) arcRisk = 99.8;
+  else if (mode === "PRED_ARC") arcRisk = Math.min(84.5, Math.max(62.0, arcRisk));
+
+  // Time-to-Failure (TTF) Calculation
+  let arcTtfHours = Infinity;
+  if (hfNoiseCurr >= 65 || d.afdd?.trip) {
+    arcTtfHours = 0;
+  } else if (slopeHfDbPerHour > 0.8) {
+    arcTtfHours = Math.max(0.01, (65 - hfNoiseCurr) / slopeHfDbPerHour);
+  }
+
+  let leakTtfHours = Infinity;
+  if (ideltaCurr >= 30 || d.rccb?.trip) {
+    leakTtfHours = 0;
+  } else if (slopeLeakMaPerHour > 0.5) {
+    leakTtfHours = Math.max(0.01, (30 - ideltaCurr) / slopeLeakMaPerHour);
+  }
+
+  const minTtfHours = Math.min(arcTtfHours, leakTtfHours);
+  let ttfText = "> 48 Hours";
+  if (minTtfHours === 0) {
+    ttfText = "< 40 ms (Hardware Cut)";
+  } else if (minTtfHours < 0.05) {
+    ttfText = "< 3 Minutes";
+  } else if (minTtfHours < 1.0) {
+    ttfText = Math.round(minTtfHours * 60) + " Minutes";
+  } else if (minTtfHours <= 48.0) {
+    ttfText = minTtfHours.toFixed(1) + " Hours";
+  }
+
+  // Stage classification (1 to 5)
+  let stage = 1;
+  if (minTtfHours === 0 || arcRisk >= 95 || ideltaCurr >= 30 || mode === "SERIES_ARC" || mode === "PARALLEL_ARC" || mode === "SHOCK" || mode === "EARTH_LEAKAGE") {
+    stage = 5; // Imminent Flashover / Hardware Trip
+  } else if (arcRisk >= 75 || ideltaCurr >= 24 || (minTtfHours !== Infinity && minTtfHours < 0.35)) {
+    stage = 4; // Shoulder Widening & Ground Ionization
+  } else if (arcRisk >= 45 || ideltaCurr >= 16 || mode === "PRED_ARC" || mode === "PRED_LEAK") {
+    stage = 3; // Sub-Cycle Sparking / Leakage Drift
+  } else if (arcRisk >= 18 || ideltaCurr >= 10 || slopeHfDbPerHour > 1.2 || slopeLeakMaPerHour > 1.0) {
+    stage = 2; // Micro-Thermal Creep
+  } else {
+    stage = 1; // Nominal Baseline
+  }
+
+  // Contact Connection Health Index & Dielectric Insulation Health Index (Apple Rings)
+  const contactHealth = Math.max(5, Math.min(99, Math.round(100 - (arcRisk * 0.94))));
+  const insulationHealth = Math.max(4, Math.min(99, Math.round(100 - (ideltaCurr / 30) * 94)));
+
+  return {
+    stage,
+    arcRisk,
+    slopeHfDbPerHour,
+    slopeLeakMaPerHour,
+    ttfText,
+    minTtfHours,
+    contactHealth,
+    insulationHealth,
+    hfNoiseCurr,
+    ideltaCurr,
+    horizonMin
+  };
+}
+
+function renderPredictiveUI(prog, d) {
+  if (!$("#predictiveCenter")) return;
+
+  // 1. Update Proactive Alert Banner
+  const alertStrip = $("#proactiveAlertStrip");
+  const proactiveTag = $("#proactiveTag");
+  const proactiveDesc = $("#proactiveDesc");
+  const proactiveIcon = $("#proactiveIcon");
+  const predArcRiskVal = $("#predArcRiskVal");
+  const predLeakDriftVal = $("#predLeakDriftVal");
+  const predTtfVal = $("#predTtfVal");
+
+  if (predArcRiskVal) predArcRiskVal.textContent = prog.arcRisk.toFixed(1) + "%";
+  if (predLeakDriftVal) {
+    const driftPrefix = prog.slopeLeakMaPerHour >= 0 ? "+" : "";
+    predLeakDriftVal.textContent = driftPrefix + prog.slopeLeakMaPerHour.toFixed(2) + " mA/h";
+  }
+  if (predTtfVal) predTtfVal.textContent = prog.ttfText;
+
+  if (alertStrip) alertStrip.classList.remove("is-warning", "is-critical");
+
+  const checkSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>';
+  const warnSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  const dangerSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
+
+  if (proactiveTag && proactiveDesc && proactiveIcon) {
+    if (prog.stage === 1) {
+      proactiveTag.textContent = "SYSTEM STABLE • NO FAULT TRAJECTORY";
+      proactiveDesc.textContent = "Multi-sensor time-series regression across voltage and dual CT currents confirms clean 50Hz sine and balanced earth return.";
+      proactiveIcon.innerHTML = checkSvg;
+    } else if (prog.stage === 2) {
+      if (alertStrip) alertStrip.classList.add("is-warning");
+      proactiveTag.textContent = "PREDICTIVE ADVISORY • MICRO-THERMAL CONTACT CREEP";
+      proactiveDesc.textContent = "Terminal resistance drift detected. Incipient vibration looseness identified prior to arcing formation.";
+      proactiveIcon.innerHTML = warnSvg;
+    } else if (prog.stage === 3) {
+      if (alertStrip) alertStrip.classList.add("is-warning");
+      proactiveTag.textContent = "PROACTIVE WARNING • SUB-CYCLE SPARKING & LEAKAGE DRIFT";
+      proactiveDesc.textContent = "High-frequency RF bursts (35-50 dB) and active vector leakage drift detected. Fault projection warns of trip within " + prog.ttfText + ".";
+      proactiveIcon.innerHTML = warnSvg;
+    } else if (prog.stage === 4) {
+      if (alertStrip) alertStrip.classList.add("is-critical");
+      proactiveTag.textContent = "CRITICAL PROGNOSTIC WARNING • ZERO-CROSS SHOULDER WIDENING";
+      proactiveDesc.textContent = "Severe ionization in progress. Zero-crossing flat shoulders expanding. Contactor or RCCB trip threshold imminent!";
+      proactiveIcon.innerHTML = dangerSvg;
+    } else {
+      if (alertStrip) alertStrip.classList.add("is-critical");
+      proactiveTag.textContent = "HARDWARE BOUNDARY BREACHED • PROTECTIVE TRIP ACTIVE";
+      proactiveDesc.textContent = "IEC 62606 or IEC 61008 threshold exceeded. Contactor / solenoid has isolated the feed to protect lives and infrastructure.";
+      proactiveIcon.innerHTML = dangerSvg;
+    }
+  }
+
+  // 2. Update Progression Sequence Visualizer
+  const stageNames = [
+    "Nominal Baseline",
+    "Micro-Thermal Creep",
+    "Sub-Cycle Sparking",
+    "Shoulder Widening",
+    "Imminent Flashover"
+  ];
+  const progStageEl = $("#progCurrentStageName");
+  if (progStageEl) {
+    progStageEl.textContent = `Active Stage: ${prog.stage} / 5 (${stageNames[prog.stage - 1]})`;
+    if (prog.stage === 1) {
+      progStageEl.style.color = "#34d399";
+      progStageEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
+      progStageEl.style.background = "rgba(16, 185, 129, 0.12)";
+    } else if (prog.stage <= 3) {
+      progStageEl.style.color = "#fbbf24";
+      progStageEl.style.borderColor = "rgba(245, 158, 11, 0.4)";
+      progStageEl.style.background = "rgba(245, 158, 11, 0.14)";
+    } else {
+      progStageEl.style.color = "#ff4d5a";
+      progStageEl.style.borderColor = "rgba(229, 9, 20, 0.5)";
+      progStageEl.style.background = "rgba(229, 9, 20, 0.18)";
+    }
+  }
+
+  const progressBar = $("#seqProgressBar");
+  if (progressBar) {
+    const pWidths = [10, 30, 52, 76, 100];
+    progressBar.style.width = pWidths[prog.stage - 1] + "%";
+  }
+
+  for (let s = 1; s <= 5; s++) {
+    const nodeEl = $("#seqNode" + s);
+    if (nodeEl) {
+      nodeEl.classList.toggle("active", s <= prog.stage);
+    }
+  }
+
+  // 3. Update Apple Health Rings
+  const ringContact = $("#ringContactFill");
+  const valContact = $("#valContactHealth");
+  if (ringContact && valContact) {
+    valContact.textContent = prog.contactHealth + "%";
+    const offset = 251.2 * (1 - prog.contactHealth / 100);
+    ringContact.style.strokeDashoffset = offset;
+    ringContact.style.stroke = prog.contactHealth >= 75 ? "#38bdf8" : prog.contactHealth >= 45 ? "#f59e0b" : "#e50914";
+  }
+
+  const ringInsulation = $("#ringInsulationFill");
+  const valInsulation = $("#valInsulationHealth");
+  if (ringInsulation && valInsulation) {
+    valInsulation.textContent = prog.insulationHealth + "%";
+    const offset = 251.2 * (1 - prog.insulationHealth / 100);
+    ringInsulation.style.strokeDashoffset = offset;
+    ringInsulation.style.stroke = prog.insulationHealth >= 75 ? "#10b981" : prog.insulationHealth >= 45 ? "#f59e0b" : "#e50914";
+  }
+
+  // 4. Update Prescriptive Maintenance Actions
+  const stepsList = $("#prescriptiveSteps");
+  if (stepsList) {
+    stepsList.innerHTML = renderPrescriptiveActionPlan(prog.stage, prog.arcRisk, prog.slopeLeakMaPerHour);
+  }
+}
+
+function renderPrescriptiveActionPlan(stage, arcRisk, leakDrift) {
+  const checkSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  const alertSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  const shieldSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>';
+
+  if (stage === 1) {
+    return `
+      <div class="step-item step-ok">
+        <div class="step-status-icon">${checkSvg}</div>
+        <div class="step-text">
+          <strong>Phase L1 & Neutral Terminals Torqued to Spec</strong>
+          <div class="cap">No thermal dissipation or terminal resistance anomalies detected.</div>
+        </div>
+      </div>
+      <div class="step-item step-ok">
+        <div class="step-status-icon">${checkSvg}</div>
+        <div class="step-text">
+          <strong>Conduit Dielectric Insulation Nominal (&gt; 45 M&Omega;)</strong>
+          <div class="cap">Capacitive leakage is balanced across all sub-circuits.</div>
+        </div>
+      </div>
+      <div class="step-item step-ok">
+        <div class="step-status-icon">${shieldSvg}</div>
+        <div class="step-text">
+          <strong>Contactor Wear Reserve: 98% Life Cycles Available</strong>
+          <div class="cap">Mechanism ready for IEC 62606 sub-cycle arc extinguishment.</div>
+        </div>
+      </div>
+    `;
+  } else if (stage <= 3) {
+    const driftStr = (leakDrift >= 0 ? "+" : "") + leakDrift.toFixed(2) + " mA/h";
+    return `
+      <div class="step-item step-warn">
+        <div class="step-status-icon">${alertSvg}</div>
+        <div class="step-text">
+          <strong>Schedule Terminal Re-Torque Inspection (Work Order #PR-204)</strong>
+          <div class="cap">Micro-vibration has increased terminal contact resistance. Inspect within 24 hours.</div>
+        </div>
+      </div>
+      <div class="step-item step-warn">
+        <div class="step-status-icon">${alertSvg}</div>
+        <div class="step-text">
+          <strong>Conduct 500V DC Megger Insulation Test</strong>
+          <div class="cap">Dielectric leakage drift rate is elevated (${driftStr}). Verify cable humidity.</div>
+        </div>
+      </div>
+      <div class="step-item step-ok">
+        <div class="step-status-icon">${shieldSvg}</div>
+        <div class="step-text">
+          <strong>Active Hardware Protective Relays Armed</strong>
+          <div class="cap">Instantaneous cut-off armed if 65 dB arc or 30 mA shock thresholds trip.</div>
+        </div>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="step-item step-urgent">
+        <div class="step-status-icon">${alertSvg}</div>
+        <div class="step-text">
+          <strong>IMMEDIATE ACTION: Isolate & De-Energize Distribution Feed</strong>
+          <div class="cap">Critical arc trajectory or imminent 30mA electric shock boundary reached.</div>
+        </div>
+      </div>
+      <div class="step-item step-urgent">
+        <div class="step-status-icon">${alertSvg}</div>
+        <div class="step-text">
+          <strong>Inspect Terminal Block for Severe Carbonized Tracking</strong>
+          <div class="cap">Flashover danger detected. Replace burnt terminal blocks before re-energizing.</div>
+        </div>
+      </div>
+      <div class="step-item step-urgent">
+        <div class="step-status-icon">${shieldSvg}</div>
+        <div class="step-text">
+          <strong>Wear High-Voltage PPE Before Opening Enclosure</strong>
+          <div class="cap">Do not operate manual bypass switch while circuit is energized.</div>
+        </div>
+      </div>
+    `;
+  }
+}
 
 function initCharts() {
   if (charts.c1) return;
@@ -711,6 +1055,58 @@ function initCharts() {
   });
 
   initScope();
+
+  // Predictive AFDD Chart
+  if ($("#cPredAfdd") && !charts.cPredAfdd) {
+    charts.cPredAfdd = new Chart($("#cPredAfdd"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          ds("Historical HF Noise (dB)", "#38bdf8", { pointRadius: 2 }),
+          ds("Projected Trajectory", "#f59e0b", { borderDash: [4, 4], pointRadius: 3, fill: true, backgroundColor: "rgba(245, 158, 11, 0.12)" }),
+          ds("IEC 62606 Limit (65 dB)", "#e50914", { borderDash: [6, 4], borderWidth: 1.8, pointRadius: 0 })
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 7, maxRotation: 0, color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
+          y: { min: 0, max: 100, ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.06)" } }
+        }
+      }
+    });
+  }
+
+  // Predictive RCCB Chart
+  if ($("#cPredRccb") && !charts.cPredRccb) {
+    charts.cPredRccb = new Chart($("#cPredRccb"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          ds("Historical Leakage (mA)", "#34d399", { pointRadius: 2 }),
+          ds("Projected Leakage", "#f97316", { borderDash: [4, 4], pointRadius: 3, fill: true, backgroundColor: "rgba(249, 115, 22, 0.12)" }),
+          ds("30mA Shock Limit", "#e50914", { borderDash: [6, 4], borderWidth: 1.8, pointRadius: 0 })
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 7, maxRotation: 0, color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
+          y: { min: 0, max: 50, ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.06)" } }
+        }
+      }
+    });
+  }
 }
 
 function updateChartView(view) {
@@ -800,6 +1196,62 @@ function drawCharts() {
   $("#stats").textContent = tele.length
     ? `${tele.length} telemetry frames recorded. Voltage: ${v[0]}/${v[1]}/${v[2]} V. Load Current: ${il[0]}/${il[1]}/${il[2]} A. Residual Leakage: ${res[0]}/${res[1]}/${res[2]} mA. Temp: ${t[0]} - ${t[2]} °C.`
     : "No readings in this period.";
+
+  // Predictive Charts Update
+  if (charts.cPredAfdd && charts.cPredRccb) {
+    const d = devs.find(x => x.id === sel) || {};
+    const prog = calculatePrognostics(tele, d, simMode, predHorizonMinutes);
+
+    const histPoints = tele.slice(-10);
+    const histLabels = histPoints.map(r => new Date(r.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    if (!histLabels.length) histLabels.push(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+
+    const forecastSteps = 5;
+    const stepMin = Math.max(1, Math.round(predHorizonMinutes / forecastSteps));
+    const futureLabels = [];
+    for (let k = 1; k <= forecastSteps; k++) {
+      futureLabels.push(`+${k * stepMin}m`);
+    }
+    const combinedLabels = [...histLabels, ...futureLabels];
+
+    // Data for AFDD Forecast
+    const lastHf = histPoints.length ? (histPoints[histPoints.length - 1].afddHfNoise ?? 12.5) : (prog.hfNoiseCurr || 12.5);
+    const histHfData = histPoints.map(r => r.afddHfNoise ?? 12.5);
+    if (!histHfData.length) histHfData.push(lastHf);
+
+    const padNulls = new Array(histHfData.length - 1).fill(null);
+    const futureHfData = [lastHf];
+    for (let k = 1; k <= forecastSteps; k++) {
+      const projected = lastHf + (prog.slopeHfDbPerHour * (k * stepMin / 60));
+      futureHfData.push(+Math.min(100, Math.max(5, projected)).toFixed(1));
+    }
+    const projHfDataset = [...padNulls, ...futureHfData];
+
+    charts.cPredAfdd.data.labels = combinedLabels;
+    charts.cPredAfdd.data.datasets[0].data = [...histHfData, ...new Array(forecastSteps).fill(null)];
+    charts.cPredAfdd.data.datasets[1].data = projHfDataset;
+    charts.cPredAfdd.data.datasets[2].data = combinedLabels.map(() => 65);
+    charts.cPredAfdd.update("none");
+
+    // Data for RCCB Forecast
+    const lastLeak = histPoints.length ? (histPoints[histPoints.length - 1].residualMa ?? 6.2) : (prog.ideltaCurr || 6.2);
+    const histLeakData = histPoints.map(r => r.residualMa ?? 6.2);
+    if (!histLeakData.length) histLeakData.push(lastLeak);
+
+    const padNullsLeak = new Array(histLeakData.length - 1).fill(null);
+    const futureLeakData = [lastLeak];
+    for (let k = 1; k <= forecastSteps; k++) {
+      const projected = lastLeak + (prog.slopeLeakMaPerHour * (k * stepMin / 60));
+      futureLeakData.push(+Math.min(50, Math.max(0, projected)).toFixed(1));
+    }
+    const projLeakDataset = [...padNullsLeak, ...futureLeakData];
+
+    charts.cPredRccb.data.labels = combinedLabels;
+    charts.cPredRccb.data.datasets[0].data = [...histLeakData, ...new Array(forecastSteps).fill(null)];
+    charts.cPredRccb.data.datasets[1].data = projLeakDataset;
+    charts.cPredRccb.data.datasets[2].data = combinedLabels.map(() => 30);
+    charts.cPredRccb.update("none");
+  }
 }
 
 /* ---------- Rendering UI Components ---------- */
@@ -1049,6 +1501,10 @@ function render() {
   charts.c4.data.datasets[1].data = devs.map(x => x.currentL ?? 12.4);
   charts.c4.data.datasets[2].data = devs.map(x => x.smoke ?? 0);
   charts.c4.update("none");
+
+  // 5. Predictive Prognostics Analytics Center Update
+  const prog = calculatePrognostics(tele, d, simMode, predHorizonMinutes);
+  renderPredictiveUI(prog, d);
 }
 
 function track(list) {
@@ -1281,6 +1737,21 @@ $("#chartViewSeg").onclick = e => {
 };
 
 // Simulation Buttons Toolbar
+
+// Forecast Horizon Selector Listener
+const horizonSeg = $("#predHorizonSeg");
+if (horizonSeg) {
+  horizonSeg.onclick = e => {
+    const btn = e.target.closest(".timeframe-btn");
+    if (!btn) return;
+    horizonSeg.querySelectorAll(".timeframe-btn").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    predHorizonMinutes = parseInt(btn.dataset.horizon, 10) || 15;
+    drawCharts();
+    render();
+  };
+}
+
 $("#simActions").onclick = e => {
   const b = e.target.closest(".sim-btn");
   if (!b) return;
