@@ -1,0 +1,9 @@
+{
+  "name": "agninode-workspace",
+  "version": "1.0.0",
+  "description": "AgniNode site workspace",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgniNode IoT Safety Console | Arc-Fault & Shock Protection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<header>
+  <h1><a href="index.html">Agni<span>Node</span></a> IoT Console</h1>
+  <nav class="nav-back-links">
+    <a href="index.html">Overview</a>
+    <a href="hardware.html">Hardware Architecture</a>
+    <a href="technology.html">Technology</a>
+    <a href="compare.html">Comparison</a>
+    <a href="contact.html">Pilot & Calculator</a>
+  </nav>
+  <span class="pill" id="conn">Connecting</span>
+  <select id="devSel" class="hide" aria-label="Device"></select>
+  <span class="who hide" id="who"></span>
+  <button id="out" class="hide">Sign out</button>
+</header>
+
+<div id="app" class="hide">
+  <!-- System Banner Alert -->
+  <div id="banner" data-s="NORMAL">
+    <div>
+      <h2 id="bS">Normal</h2>
+      <div class="sub" id="bSub"></div>
+    </div>
+    <div class="banner-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-alarm-toggle" id="alarmToggle" title="Turn on / Silence the hardware alarm and buzzer">🚨 Turn on Alarm</button>
+      <button class="btn ghost hide" id="ack">Acknowledge alarm</button>
+    </div>
+  </div>
+
+  <main>
+    <!-- Interactive Fault Simulator & Diagnostics Toolbar -->
+    <div class="panel sim-panel">
+      <div class="sim-header">
+        <div class="sim-title">
+          <span class="sim-icon">⚡</span>
+          <div>
+            <strong>Interactive Electrical Fault & Protection Test Bench</strong>
+            <div class="cap">Inject real-world electrical faults to verify AFDD (Arc Detection) and RCCB/RCD (Shock Protection) analytical algorithms</div>
+          </div>
+        </div>
+        <div class="sim-actions" id="simActions">
+          <button class="sim-btn active" id="btnSimNormal" data-mode="NORMAL">🟢 Normal (Safe Grid)</button>
+          <button class="sim-btn" id="btnSimSeriesArc" data-mode="SERIES_ARC">⚡ Test Series Arc (AFDD)</button>
+          <button class="sim-btn" id="btnSimParallelArc" data-mode="PARALLEL_ARC">💥 Test Parallel Arc (AFDD)</button>
+          <button class="sim-btn" id="btnSimShock" data-mode="SHOCK">⚠️ Test 38mA Shock (RCCB)</button>
+          <button class="sim-btn" id="btnSimEarth" data-mode="EARTH_LEAKAGE">🔥 Test 180mA Earth Leak (RCD)</button>
+          <button class="sim-btn sim-reset" id="btnSimReset">🔄 Reset Breakers</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Electrical Telemetry Sensors KPI Row -->
+    <div class="row kpis kpis-electrical">
+      <!-- Voltage Sensor (1x Voltage Sensor) -->
+      <div class="panel kpi">
+        <div class="kpi-top">
+          <h3>AC Line Voltage</h3>
+          <span class="sensor-tag tag-volt">1x Voltage Sensor</span>
+        </div>
+        <div class="v" id="kV">--</div>
+        <div class="bar"><i id="bV"></i></div>
+        <div class="cap" id="cV">Nominal: 230V AC • 50.0 Hz • THD: 1.2%</div>
+      </div>
+
+      <!-- Current Sensor 1 (Line / Phase CT) -->
+      <div class="panel kpi">
+        <div class="kpi-top">
+          <h3>Current Sensor 1 (Line)</h3>
+          <span class="sensor-tag tag-curr">CT1 Phase (IL)</span>
+        </div>
+        <div class="v" id="kIL">--</div>
+        <div class="bar"><i id="bIL"></i></div>
+        <div class="cap" id="cIL">Load Current: 0 - 32A Rated • PF: 0.98</div>
+      </div>
+
+      <!-- Current Sensor 2 (Neutral CT) -->
+      <div class="panel kpi">
+        <div class="kpi-top">
+          <h3>Current Sensor 2 (Neutral)</h3>
+          <span class="sensor-tag tag-curr">CT2 Neutral (IN)</span>
+        </div>
+        <div class="v" id="kIN">--</div>
+        <div class="bar"><i id="bIN"></i></div>
+        <div class="cap" id="cIN">Return Conductor Current • Balanced</div>
+      </div>
+
+      <!-- Differential Residual Current (Dual-CT Vector Balance) -->
+      <div class="panel kpi">
+        <div class="kpi-top">
+          <h3>Differential Leakage</h3>
+          <span class="sensor-tag tag-leak">|IL - IN| (RCCB Core)</span>
+        </div>
+        <div class="v" id="kIdelta">--</div>
+        <div class="bar"><i id="bIdelta"></i></div>
+        <div class="cap" id="cIdelta">Human shock limit: 30 mA • Normal: &lt; 10 mA</div>
+      </div>
+    </div>
+
+    <!-- Environmental Sensors KPI Row -->
+    <div class="row kpis">
+      <div class="panel kpi">
+        <div class="kpi-top"><h3>Temperature</h3><span class="sensor-tag">NTC Thermal</span></div>
+        <div class="v" id="kT">--</div>
+        <div class="bar"><i id="bT"></i></div>
+        <div class="cap" id="cT"></div>
+      </div>
+      <div class="panel kpi">
+        <div class="kpi-top"><h3>Humidity</h3><span class="sensor-tag">AHT20 Sensor</span></div>
+        <div class="v" id="kH">--</div>
+        <div class="bar"><i id="bH" style="background:#ffffff"></i></div>
+        <div class="cap">Relative humidity inside panel</div>
+      </div>
+      <div class="panel kpi">
+        <div class="kpi-top"><h3>Smoke Level</h3><span class="sensor-tag">MQ-2 / Optical</span></div>
+        <div class="v" id="kS">--</div>
+        <div class="bar"><i id="bS2"></i></div>
+        <div class="cap" id="cS"></div>
+      </div>
+    </div>
+
+    <!-- AFDD & RCCB Deep Analytical Engine Grid -->
+    <div class="row two analysis-grid">
+      <!-- AFDD Analysis Panel (Using 1 Voltage Sensor + 1 Current Sensor) -->
+      <div class="panel analysis-panel" id="afddCard">
+        <div class="analysis-head">
+          <div>
+            <div class="panel-subtitle">IEC 62606 / UL 1699 Standard</div>
+            <h3>AFDD Arc-Fault Analytical Engine</h3>
+          </div>
+          <span class="status-pill status-normal" id="afddBadge">NORMAL • ARMED</span>
+        </div>
+        <div class="analysis-sensor-note">
+          <span class="pill-mini">Inputs: 1x Voltage Sensor (V) + 1x Current Sensor (IL)</span>
+        </div>
+
+        <div class="analysis-body">
+          <div class="diag-metric-list">
+            <div class="diag-item">
+              <div class="diag-label">
+                <span>HF Noise Spectral Energy (10 kHz - 1 MHz)</span>
+                <strong id="afddHfVal">12 dB</strong>
+              </div>
+              <div class="diag-bar"><i id="bAfddHf" style="width:12%"></i></div>
+              <div class="cap">Broadband RF arc burst threshold: &gt; 65 dB</div>
+            </div>
+
+            <div class="diag-item">
+              <div class="diag-label">
+                <span>Zero-Crossing Shoulder Dwell (t_shoulder)</span>
+                <strong id="afddShoulderVal">0.08 ms</strong>
+              </div>
+              <div class="diag-bar"><i id="bAfddShoulder" style="width:5%"></i></div>
+              <div class="cap">Extinguishment &amp; re-ignition pause threshold: &gt; 1.0 ms</div>
+            </div>
+
+            <div class="diag-item">
+              <div class="diag-label">
+                <span>Cycle-to-Cycle Erraticism Index</span>
+                <strong id="afddErrVal">1.8%</strong>
+              </div>
+              <div class="diag-bar"><i id="bAfddErr" style="width:4%"></i></div>
+              <div class="cap">Non-periodic chaotic variance (filters motors &amp; dimmers): &gt; 40%</div>
+            </div>
+
+            <div class="diag-item">
+              <div class="diag-label">
+                <span>Synchronous Voltage Sag (ΔV_dip)</span>
+                <strong id="afddDipVal">0.3 V</strong>
+              </div>
+              <div class="diag-bar"><i id="bAfddDip" style="width:3%"></i></div>
+              <div class="cap">Localized voltage drop at arc ignition burst: &gt; 15 V</div>
+            </div>
+
+            <div class="diag-item">
+              <div class="diag-label">
+                <span>Arc Energy Accumulator (I²·t Curve)</span>
+                <strong id="afddEnergyVal">4%</strong>
+              </div>
+              <div class="diag-bar"><i id="bAfddEnergy" style="width:4%"></i></div>
+              <div class="cap">IEC trip accumulator (100% = instantaneous relay power cut)</div>
+            </div>
+          </div>
+
+          <div class="protection-verdict" id="afddVerdictBox">
+            <div class="verdict-title">AFDD Contactor State:</div>
+            <div class="verdict-desc" id="afddVerdictText">Circuit healthy. No micro-arcing detected. Power contactor CLOSED.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RCCB / RCD Shock Protection Panel (Using 2 Current Sensors) -->
+      <div class="panel analysis-panel" id="rccbCard">
+        <div class="analysis-head">
+          <div>
+            <div class="panel-subtitle">IEC 61008 / IEC 61009 Standard</div>
+            <h3>RCCB / RCD Shock &amp; Earth Leakage Engine</h3>
+          </div>
+          <span class="status-pill status-normal" id="rccbBadge">BALANCED • SAFE</span>
+        </div>
+        <div class="analysis-sensor-note">
+          <span class="pill-mini">Inputs: 2x Current Sensors (Line CT1 + Neutral CT2 Core Flux)</span>
+        </div>
+
+        <div class="analysis-body">
+          <div class="rccb-balance-display">
+            <div class="balance-line-neutral">
+              <div class="balance-col">
+                <span class="b-lbl">Line Current (IL)</span>
+                <span class="b-val" id="rccbIL">12.50 A</span>
+              </div>
+              <div class="balance-symbol">⇄</div>
+              <div class="balance-col">
+                <span class="b-lbl">Neutral Current (IN)</span>
+                <span class="b-val" id="rccbIN">12.49 A</span>
+              </div>
+            </div>
+
+            <div class="residual-meter-box">
+              <div class="res-title">
+                <span>Residual Differential Current (IΔn = |IL - IN|)</span>
+                <span class="res-num" id="rccbIdeltaVal">6.2 mA</span>
+              </div>
+              <div class="res-bar-track">
+                <div class="res-bar-fill" id="rccbBarFill" style="width:6%"></div>
+                <div class="res-marker m-safe" title="Nominal (<10mA)" style="left:20%"></div>
+                <div class="res-marker m-warn" title="Warning (<30mA)" style="left:60%"></div>
+                <div class="res-marker m-trip" title="Shock Trip (30mA)" style="left:60%"></div>
+              </div>
+              <div class="res-scale-labels">
+                <span>0 mA</span>
+                <span>10 mA (Nominal)</span>
+                <span style="color:#ff4d5a;font-weight:700">30 mA (Shock Trip)</span>
+                <span>100+ mA (Fire Fault)</span>
+              </div>
+            </div>
+
+            <div class="shock-hazard-stages">
+              <div class="stage-item stage-safe active" id="stgSafe">
+                <span class="stg-dot"></span>
+                <div>
+                  <strong>&lt; 10 mA: Safe / Nominal</strong>
+                  <div class="cap">Natural parasitic cable capacitance</div>
+                </div>
+              </div>
+              <div class="stage-item stage-warn" id="stgWarn">
+                <span class="stg-dot"></span>
+                <div>
+                  <strong>10 - 29 mA: Elevated Leakage</strong>
+                  <div class="cap">Moisture / insulation degradation warning</div>
+                </div>
+              </div>
+              <div class="stage-item stage-shock" id="stgShock">
+                <span class="stg-dot"></span>
+                <div>
+                  <strong>≥ 30 mA: Human Electric Shock Hazard</strong>
+                  <div class="cap">Ventricular fibrillation risk • Trip &lt; 40 ms</div>
+                </div>
+              </div>
+              <div class="stage-item stage-fire" id="stgFire">
+                <span class="stg-dot"></span>
+                <div>
+                  <strong>≥ 100 mA: Ground Fire Fault</strong>
+                  <div class="cap">Thermal ignition risk • Immediate trip</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="protection-verdict" id="rccbVerdictBox">
+              <div class="verdict-title">RCCB / RCD Contactor State:</div>
+              <div class="verdict-desc" id="rccbVerdictText">Current vector balanced (|IL - IN| = 6.2 mA &lt; 30 mA). Life safety active.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Multi-Channel AC Waveform Oscilloscope -->
+    <div class="panel">
+      <div class="top">
+        <div>
+          <h3>Live Oscilloscope: AC Voltage, Current &amp; Differential Waveforms</h3>
+          <div class="cap">Real-time signal analysis (50.0 Hz grid cycle): Voltage (Yellow/Cyan), Current (Red/White), Residual Leakage IΔn (Magenta)</div>
+        </div>
+        <div class="scope-legend-wrap">
+          <span class="legend-item"><i class="leg-color leg-v"></i> Voltage (V)</span>
+          <span class="legend-item"><i class="leg-color leg-i"></i> Current (IL)</span>
+          <span class="legend-item"><i class="leg-color leg-res"></i> Residual IΔn (|IL - IN|)</span>
+          <span class="scope-fps" id="scopeFps">60 FPS</span>
+        </div>
+      </div>
+      <div class="cv scope-cv" style="height:280px;margin-top:12px">
+        <canvas id="scopeCanvas"></canvas>
+      </div>
+      <div class="scope-status-strip" id="scopeStatusStrip">
+        <span id="scopeAnnotation">Signal Nominal: Clean 50.0 Hz sinusoid, zero-crossing harmonic noise absent, differential core in balance.</span>
+      </div>
+    </div>
+
+    <!-- Telemetry History Section -->
+    <div class="panel">
+      <div class="top">
+        <div>
+          <h3>Telemetry History</h3>
+          <div class="cap" id="chartSubTitle">Environmental: Temperature and Smoke trends</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="seg" id="chartViewSeg">
+            <button class="on" data-view="env">Environmental</button>
+            <button data-view="elec">Electrical (V &amp; I)</button>
+            <button data-view="safety">AFDD &amp; RCCB Analytics</button>
+          </div>
+          <select id="ctype" aria-label="Chart type">
+            <option value="line">Line chart</option>
+            <option value="bar">Bar chart</option>
+          </select>
+          <div class="seg" id="rng">
+            <button data-r="3600000">1 hour</button>
+            <button data-r="86400000" class="on">24 hours</button>
+            <button data-r="604800000">7 days</button>
+          </div>
+          <button class="btn ghost" id="csv">Export CSV</button>
+        </div>
+      </div>
+      <div class="row two" style="margin-top:14px">
+        <div>
+          <div class="cap" id="c1Title">Primary Telemetry</div>
+          <div class="cv"><canvas id="c1"></canvas></div>
+        </div>
+        <div>
+          <div class="cap" id="c2Title">Secondary / Threshold Telemetry</div>
+          <div class="cv"><canvas id="c2"></canvas></div>
+        </div>
+      </div>
+      <div class="cap" id="stats" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Fleet & Devices -->
+    <div class="row two">
+      <div class="panel">
+        <h3>Monitored Panels &amp; Devices</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Last seen</th>
+            </tr>
+          </thead>
+          <tbody id="devT"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Fleet Protection Status</h3>
+        <div class="cv" style="height:200px"><canvas id="c3"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Compare Device Telemetry</h3>
+      <div class="cv" style="height:220px"><canvas id="c4"></canvas></div>
+    </div>
+
+    <!-- Alerts & Administration -->
+    <div class="row two">
+      <div class="panel">
+        <h3>Recent Safety Alerts &amp; Trips</h3>
+        <ul id="alerts"></ul>
+      </div>
+      <div class="panel hide" id="adm">
+        <h3>Protection &amp; Sensor Thresholds</h3>
+        <div class="f">
+          <label>Temperature warning (°C)<input id="tw" type="number"></label>
+          <label>Temperature alarm (°C)<input id="ta" type="number"></label>
+          <label>Smoke warning (ppm)<input id="sw" type="number"></label>
+          <label>Smoke alarm (ppm)<input id="sa" type="number"></label>
+          <label>RCCB Shock Trip (mA)<input id="rccbTh" type="number" value="30"></label>
+          <label>AFDD Noise Warning (dB)<input id="afddTh" type="number" value="65"></label>
+          <label>Over-Voltage Limit (V)<input id="ovTh" type="number" value="255"></label>
+          <label>Under-Voltage Limit (V)<input id="uvTh" type="number" value="195"></label>
+        </div>
+        <p>
+          <button class="btn" id="saveTh">Save thresholds</button>
+          <span class="cap" id="thMsg"></span>
+        </p>
+        <h3 style="margin-top:14px">User Access &amp; Roles</h3>
+        <table><tbody id="usr"></tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/config.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

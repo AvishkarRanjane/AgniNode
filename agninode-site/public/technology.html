@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autonomous Safety & Arc Physics | AgniNode</title>
+  <meta name="description" content="Discover how AgniNode detects high-frequency electrical arc transients, executes deterministic trip logic on an air-gapped Safety MCU, and deploys multi-sensor fusion.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <!-- Critical Preload Directives for Instant Rendering -->
+  <link rel="preload" href="css/site.css" as="style">
+  <link rel="preload" href="favicon.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="assets/hardware/agninode-glass-render.jpg" as="image">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+  <!-- Site Navigation -->
+  <header class="site-header">
+    <div class="wrap nav-container">
+      <a class="logo-brand" href="index.html" aria-label="AgniNode Home">
+        <div class="logo-flame" aria-hidden="true">
+          <img src="assets/images/agninode-logo-mark-white.png" alt="AgniNode Logo" class="logo-mark-img">
+        </div>
+        <span class="logo-text">Agni<span>Node</span></span>
+      </a>
+
+      <nav class="nav-links">
+        <a class="nav-link" href="index.html">Overview</a>
+        <a class="nav-link" href="hardware.html">Hardware Architecture</a>
+        <a class="nav-link active" href="technology.html">Technology</a>
+        <a class="nav-link" href="compare.html">Comparison</a>
+        <a class="nav-link" href="contact.html">Pilot & Calculator</a>
+        <a class="nav-link" href="dashboard.html">Cloud Dashboard</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="btn btn-secondary btn-sm" href="login.html">Log In</a>
+        <a class="btn btn-primary btn-sm" href="dashboard.html">Live Dashboard</a>
+        <button class="mobile-toggle" aria-label="Toggle menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page Header -->
+  <section class="hero-section" style="padding-bottom:32px">
+    <div class="wrap">
+      <div class="section-head" style="margin-bottom:32px">
+        <h1 class="hero-title" style="font-size:clamp(34px,5vw,56px)">
+          Autonomous Edge AI & <span class="gradient-text">Arc Detection Physics</span>
+        </h1>
+        <p class="section-desc">
+          Safety decisions must never wait on Wi-Fi handshake timeouts or cloud server availability. AgniNode separates the real-time deterministic safety loop from high-level connectivity, executing arc analysis in hardware on every single AC cycle.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Arc Detection Physics Section -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;background:var(--bg-glass-card);border-radius:var(--radius-xl);padding:40px;box-shadow:var(--shadow-card)">
+        <div>
+          <h2 style="font-size:28px;color:#fff;margin:16px 0 16px">Why conventional breakers cannot detect an arc.</h2>
+          <p style="font-size:15px;color:var(--text-muted);line-height:1.6;margin-bottom:18px">
+            A standard Miniature Circuit Breaker (MCB) operates on two simple physical principles: a bimetallic strip that bends on slow thermal overload, and an electromagnetic solenoid that trips on massive short-circuit currents.
+          </p>
+          <p style="font-size:15px;color:var(--text-muted);line-height:1.6;margin-bottom:24px">
+            An electrical arc fault is neither: it is an intermittent plasma discharge caused by loose screw terminals, oxidized busbars, or rodent-chewed cables. The current draw is often only <strong>5A to 12A</strong> — completely normal to a 16A or 32A breaker — but the plasma reaches <strong>3,000°C to 6,000°C</strong>, igniting panel plastics in minutes.
+          </p>
+          <div style="padding:18px;background:rgba(0,0,0,0.45);border-radius:var(--radius-md);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06)">
+            <strong style="color:var(--fire-red);display:block;margin-bottom:4px">AgniNode's Spectral Solution:</strong>
+            <p style="font-size:13px;color:var(--text-muted);margin:0">
+              The high-bandwidth current sensing front-end passes the line current through an active analog filter into an ultra-fast 200ksps conversion pipeline. Deterministic firmware scores the broadband <strong>20–100 kHz frequency energy burst</strong> that is the unmistakable signature of arcing, differentiating it from normal resistive loads.
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card" style="padding:22px">
+            <span class="mono" style="font-size:12px;color:#ffffff;font-weight:700">50 Hz SINE WAVE</span>
+            <h4 style="font-size:17px;color:#fff;margin:4px 0 8px">Normal AC Mains Power</h4>
+            <p style="font-size:13px;color:var(--text-muted);margin:0">Clean, predictable current waveform powering computers, lighting, and appliances.</p>
+          </div>
+
+          <div class="card" style="padding:22px">
+            <span class="mono" style="font-size:12px;color:var(--fire-red);font-weight:700">20–100 kHz NOISE BURST</span>
+            <h4 style="font-size:17px;color:#fff;margin:4px 0 8px">Series & Parallel Micro-Arcing</h4>
+            <p style="font-size:13px;color:var(--text-muted);margin:0">High-frequency voltage notch and chaotic current bursts caused by intermittent breakdown of air insulation between loose conductors.</p>
+          </div>
+
+          <div class="card" style="padding:22px">
+            <span class="mono" style="font-size:12px;color:#ffffff;font-weight:700">MULTI-CYCLE CONFIRMATION</span>
+            <h4 style="font-size:17px;color:#fff;margin:4px 0 8px">Nuisance Filter Algorithm</h4>
+            <p style="font-size:13px;color:var(--text-muted);margin:0">Differentiates legitimate brush motor noise (e.g. power drills, vacuum cleaners) from destructive arcing through cycle-by-cycle persistence checks.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dual-MCU Air-Gapped Architecture -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title">Dual-Core Architecture. Dedicated Safety & Telemetry Planes.</h2>
+        <p class="section-desc">
+          Following international industrial fire & gas safety equipment standards, the certified safety function runs on an isolated, auditable hardware path, separate from wireless network stacks.
+        </p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:20px;align-items:center;margin-bottom:48px">
+        <!-- Safety MCU Card -->
+        <div class="card" style="padding:32px;background:linear-gradient(180deg,rgba(255,59,48,0.12) 0%,var(--bg-surface) 100%);box-shadow:var(--shadow-fire-card)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="mono" style="color:var(--fire-red);font-size:13px;font-weight:700">DETERMINISTIC SAFETY CORE</span>
+          </div>
+          <h3 style="font-size:24px;color:#fff;margin:14px 0 10px">Real-Time Safety Engine</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px">
+            Operates dedicated bare-metal safety firmware with an independent hardware watchdog. Continuously monitors line acoustics and triggers protective physical actuators.
+          </p>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--text-main)">
+            <li><span class="check-icon">✓</span> Fast 12-bit ADC (≥200 ksps)</li>
+            <li><span class="check-icon">✓</span> Zero wireless attack surface — air-gapped from network stacks</li>
+            <li><span class="check-icon">✓</span> Cannot hang on network socket timeouts</li>
+            <li><span class="check-icon">✓</span> Direct sub-4ms actuation of Shunt-Trip Coil & Aerosol Suppression</li>
+            <li><span class="check-icon">✓</span> Immutable safety logic protected against external tampering</li>
+          </ul>
+        </div>
+
+        <!-- Telemetry Bridge -->
+        <div class="telemetry-bridge-node" title="Real-time Isolated Bidirectional Telemetry Bus">
+          <div class="telemetry-bridge-pulse"></div>
+          <div class="telemetry-bridge-logo">
+            <svg class="telemetry-arrows-svg" viewBox="0 0 32 32" fill="none">
+              <path class="arrow-right" d="M6 11h16m0 0l-5-5m5 5l-5 5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="arrow-left" d="M26 21H10m0 0l5-5m-5 5l5 5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Comms MCU Card -->
+        <div class="card" style="padding:32px;background:var(--bg-glass-card)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="mono" style="color:#ffffff;font-size:13px;font-weight:700">ENTERPRISE TELEMETRY BRIDGE</span>
+          </div>
+          <h3 style="font-size:24px;color:#fff;margin:14px 0 10px">Enterprise Connectivity Engine</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px">
+            Runs dedicated networking services with dual-core headroom to handle Wi-Fi 802.11 b/g/n, BLE commissioning, TLS encryption, and cloud synchronization.
+          </p>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--text-main)">
+            <li><span class="check-icon">✓</span> Cloud telemetry streaming with auto-buffering & retry</li>
+            <li><span class="check-icon">✓</span> Local BLE security pairing for authenticated technician commissioning</li>
+            <li><span class="check-icon">✓</span> Encrypted over-the-air updates for communication stacks</li>
+            <li><span class="check-icon">✓</span> Modbus RTU RS-485 multi-panel industrial bus aggregation</li>
+            <li><span class="check-icon">✓</span> Complete isolation: communication faults CANNOT interrupt safety loop trip action</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Multi-Sensor Fusion Matrix -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title">Multi-Sensor Fusion & Cross-Validation</h2>
+        <p class="section-desc">Single-trigger detectors lead to dangerous false trips. AgniNode correlates electrical, thermal, optical, and chemical signals together.</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon arc-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg></div>
+          <h3 class="card-title">Arc Spectral Burst (Primary)</h3>
+          <p class="card-text">High-frequency energy thresholding flags arcing hours before heat develops. Detects both series (loose connection) and parallel (phase-to-phase) arcs.</p>
+          <span class="mono" style="font-size:12px;color:var(--text-dim)">Sampling: 200ksps • Band: 20–100 kHz</span>
+        </div>
+
+        <div class="card">
+          <div class="card-icon cyan thermal-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 0 0-5 5v6.5a7 7 0 1 0 10 0V7a5 5 0 0 0-5-5zm0 17a4 4 0 0 1-2.5-7.12V7a2.5 2.5 0 0 1 5 0v4.88A4 4 0 0 1 12 19z"/></svg></div>
+          <h3 class="card-title">Rate-of-Rise Thermal (dT/dt)</h3>
+          <p class="card-text">Mounted adjacent to terminal busbars, precision solid-state thermal sensors track absolute temperature and sudden temperature slope (dT/dt), catching thermal runaways early.</p>
+          <span class="mono" style="font-size:12px;color:var(--text-dim)">Accuracy: ±0.3°C • Resolution: 0.01°C</span>
+        </div>
+
+        <div class="card">
+          <div class="card-icon green smoke-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div>
+          <h3 class="card-title">Optical Photoelectric Smoke</h3>
+          <p class="card-text">Dual-beam optical smoke chamber is specifically tuned to detect large, slow particulate smoke released from smouldering PVC, XLPE, and rubber wire insulation.</p>
+          <span class="mono" style="font-size:12px;color:var(--text-dim)">Chamber: IR LED + Photodiode Scatter</span>
+        </div>
+
+        <div class="card">
+          <div class="card-icon flame-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.15 4.3 5.37 6.26 5.37 11.35a5.37 5.37 0 1 1-10.74 0c0-2.74 1.56-4.3 2.7-5.87.39 1.95 1.17 2.74 1.95 3.13-.39-3.13 0-5.48.72-8.61z"/></svg></div>
+          <h3 class="card-title">Infrared Flame Confirmation</h3>
+          <p class="card-text">Broad-angle infrared phototransistor monitors interior enclosure reflections. Serves as an undeniable confirmation signal for instant aerosol suppression release.</p>
+          <span class="mono" style="font-size:12px;color:var(--text-dim)">Range: ~1m inside distribution board</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Multi-Tier Deployment Architecture -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title">One Core Architecture. Three Deployment Scales.</h2>
+        <p class="section-desc">From a single 2BHK flat panel to multi-storey residential societies and industrial manufacturing plants.</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <h3 style="font-size:20px;color:#fff">Residential Consumer Unit</h3>
+          <p style="font-size:14px;color:var(--text-muted)">
+            Direct Wi-Fi connection to owner's home router. Interfaced to an MCB with an MX shunt-trip accessory. Instant push notifications to owner's smartphone.
+          </p>
+          <div class="mono" style="font-size:12px;color:var(--fire-red);margin-top:auto">Uplink: Wi-Fi 2.4 GHz • Breaker: MCB (Up to 63A)</div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:20px;color:#fff">Multi-Panel Floor Riser</h3>
+          <p style="font-size:14px;color:var(--text-muted)">
+            Up to 32 AgniNode units daisy-chained over an RS-485 Modbus RTU bus per floor. Central floor gateway provides cellular/Wi-Fi uplink to facility management team.
+          </p>
+          <div class="mono" style="font-size:12px;color:#ffffff;margin-top:auto">Fieldbus: RS-485 Modbus • Breakers: MCB / MCCB Feeder</div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:20px;color:#fff">Main Incomer & Substation</h3>
+          <p style="font-size:14px;color:var(--text-muted)">
+            Interfaces to high-current MCCBs (63A to 2,500A+) at main switchgear. Hard-wired relay contact directly feeds the campus central Fire Alarm Control Panel (FACP) per IS 2189.
+          </p>
+          <div class="mono" style="font-size:12px;color:var(--fire-red);margin-top:auto">Compliance: IS 2189 / NBC 2025 • Breaker: Heavy MCCB</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="logo-brand">
+            <div class="logo-flame" aria-hidden="true">
+          <img src="assets/images/agninode-logo-mark-white.png" alt="AgniNode Logo" class="logo-mark-img">
+        </div>
+            <span class="logo-text">Agni<span>Node</span></span>
+          </div>
+          <p style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-top:8px">
+            Intelligent Electrical Fire Prevention System. Sense, decide, and suppress locally; stay connected everywhere else.
+          </p>
+          <div class="mono" style="font-size:12px;color:var(--text-dim);margin-top:8px">
+            Designed & Engineered by Avishkar<br>New Panvel, Maharashtra, India
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="hardware.html">Hardware Architecture</a></li>
+            <li><a href="technology.html">Technology & Safety Loop</a></li>
+            <li><a href="compare.html">Competitor Comparison</a></li>
+            <li><a href="contact.html">Pilot Program & ROI</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Cloud & Dashboard</h4>
+          <ul class="footer-links">
+            <li><a href="dashboard.html">Live IoT Dashboard</a></li>
+            <li><a href="login.html">Sign In / Demo Access</a></li>
+            <li><a href="public/js/config.js">Firebase Configuration</a></li>
+            <li><a href="dashboard.html#adm">Threshold Management</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Standards & Compliance</h4>
+          <ul class="footer-links">
+            <li><span style="color:var(--text-muted)">IEC 62606 (AFDD Core)</span></li>
+            <li><span style="color:var(--text-muted)">NBC 2025 Fire Safety</span></li>
+            <li><span style="color:var(--text-muted)">IS 2189 Panel Integration</span></li>
+            <li><span style="color:var(--text-muted)">UL94 V-0 Rated Polycarbonate</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; <span id="cur-year">2026</span> AgniNode. All rights reserved. Patent Pending.</div>
+        <div style="display:flex;gap:18px">
+          <a href="hardware.html">Hardware Architecture</a>
+          <a href="technology.html">Air-Gapped Safety</a>
+          <a href="dashboard.html">Live Status</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/site.js"></script>
+  <script>document.getElementById("cur-year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

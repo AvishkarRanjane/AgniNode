@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#0c0205"/>
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="url(#borderGrad)" stroke-width="2"/>
+  <path d="M32 8L12 17V32C12 45 20.5 56.5 32 60C43.5 56.5 52 45 52 32V17L32 8Z" fill="url(#shieldBody)" filter="drop-shadow(0 4px 10px rgba(0,0,0,0.6))"/>
+  <path d="M32 9.5L14 18V32C14 43.5 21.7 54 32 57.5C42.3 54 50 43.5 50 32V18L32 9.5Z" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+  <path d="M32 18L24 33H33L31 48L40 31H31L32 18Z" fill="#ffffff" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))"/>
+  <defs>
+    <linearGradient id="borderGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e2e8f0"/>
+      <stop offset="0.5" stop-color="#64748b"/>
+      <stop offset="1" stop-color="#94a3b8"/>
+    </linearGradient>
+    <radialGradient id="shieldBody" cx="35%" cy="30%" r="70%" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff2a3b"/>
+      <stop offset="0.6" stop-color="#d90429"/>
+      <stop offset="1" stop-color="#700615"/>
+    </radialGradient>
+  </defs>
+</svg>

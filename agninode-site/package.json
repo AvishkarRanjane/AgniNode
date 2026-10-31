@@ -1,0 +1,9 @@
+{
+  "name": "agninode-site",
+  "version": "1.0.0",
+  "description": "AgniNode website and dashboard",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
