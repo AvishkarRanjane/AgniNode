@@ -790,7 +790,6 @@ select.has-custom-select {
 }
 
 .sim-icon {
-  font-size: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -800,6 +799,31 @@ select.has-custom-select {
   border-radius: 12px;
   border: 1px solid rgba(229, 9, 20, 0.35);
   box-shadow: 0 0 16px rgba(229, 9, 20, 0.3);
+  color: #ff1e2d;
+}
+
+.sim-icon svg {
+  stroke: #ff1e2d;
+}
+
+.sim-btn-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  vertical-align: -2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.alarm-btn-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  vertical-align: -2px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .sim-title strong {

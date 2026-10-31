@@ -72,7 +72,7 @@ function analyzeAFDD(voltage, currentL, faultMode) {
     status = "TRIP_SERIES_ARC";
     trip = true;
     tripTimeMs = 38;
-    verdict = "🚨 CRITICAL: Series Arc Fault detected! Flat zero-crossing shoulders (" + shoulderMs.toFixed(2) + " ms) and broadband HF bursts (" + hfNoise.toFixed(1) + " dB). Relay TRIPPED in 38 ms!";
+    verdict = "CRITICAL: Series Arc Fault detected! Flat zero-crossing shoulders (" + shoulderMs.toFixed(2) + " ms) and broadband HF bursts (" + hfNoise.toFixed(1) + " dB). Relay TRIPPED in 38 ms!";
   } else if (faultMode === "PARALLEL_ARC") {
     // Parallel Arc: High intermittent current bursts with synchronized localized voltage sags
     hfNoise = 95 + Math.random() * 8;
@@ -83,10 +83,10 @@ function analyzeAFDD(voltage, currentL, faultMode) {
     status = "TRIP_PARALLEL_ARC";
     trip = true;
     tripTimeMs = 16;
-    verdict = "🚨 CRITICAL: Parallel Arc Flashover detected! Violent dI/dt spikes with synchronized line voltage sag (" + dipV.toFixed(1) + " V). Instantaneous relay cut in 16 ms!";
+    verdict = "CRITICAL: Parallel Arc Flashover detected! Violent dI/dt spikes with synchronized line voltage sag (" + dipV.toFixed(1) + " V). Instantaneous relay cut in 16 ms!";
   } else if (hfNoise >= TH.afddNoiseWarnDb) {
     status = "WARNING_NOISE";
-    verdict = "⚠️ WARNING: Elevated high-frequency spectral noise detected. Monitoring arc energy accumulator.";
+    verdict = "WARNING: Elevated high-frequency spectral noise detected. Monitoring arc energy accumulator.";
   }
 
   return { hfNoise, shoulderMs, erraticismPct, dipV, energyPct, status, trip, tripTimeMs, verdict };
@@ -107,18 +107,18 @@ function analyzeRCCB(currentL, currentN, faultMode) {
     trip = true;
     tripTimeMs = 21;
     stage = "shock";
-    verdict = "🚨 LIFE SAFETY TRIP: Human Electric Shock Hazard! Residual leakage (" + ideltaMa.toFixed(1) + " mA > 30 mA limit). Solenoid coil TRIPPED in 21 ms (<40 ms mandated by IEC 61008)!";
+    verdict = "LIFE SAFETY TRIP: Human Electric Shock Hazard! Residual leakage (" + ideltaMa.toFixed(1) + " mA > 30 mA limit). Solenoid coil TRIPPED in 21 ms (<40 ms mandated by IEC 61008)!";
   } else if (faultMode === "EARTH_LEAKAGE" || ideltaMa >= 100) {
     // Heavy earth ground fault: Fire hazard
     status = "TRIP_FIRE_FAULT";
     trip = true;
     tripTimeMs = 14;
     stage = "fire";
-    verdict = "🚨 FIRE HAZARD TRIP: Heavy Ground Fault Leakage (" + ideltaMa.toFixed(1) + " mA >= 100 mA)! High localized heating risk. Contactor TRIPPED in 14 ms!";
+    verdict = "FIRE HAZARD TRIP: Heavy Ground Fault Leakage (" + ideltaMa.toFixed(1) + " mA >= 100 mA)! High localized heating risk. Contactor TRIPPED in 14 ms!";
   } else if (ideltaMa >= 10) {
     status = "WARN_LEAKAGE";
     stage = "warn";
-    verdict = "⚠️ WARNING: Elevated insulation leakage detected (" + ideltaMa.toFixed(1) + " mA). Check panel dampness or cable insulation degradation.";
+    verdict = "WARNING: Elevated insulation leakage detected (" + ideltaMa.toFixed(1) + " mA). Check panel dampness or cable insulation degradation.";
   }
 
   return { ideltaMa, status, trip, tripTimeMs, stage, verdict };
@@ -609,19 +609,19 @@ function initScope() {
 
     if (simMode === "SERIES_ARC") {
       ctx.fillStyle = "#ff4d5a";
-      ctx.fillText("⚡ AFDD SIGNATURE: Zero-Crossing Dwell Shoulder & Broadband HF Bursts Active", 14, h - 14);
+      ctx.fillText("AFDD SIGNATURE: Zero-Crossing Dwell Shoulder & Broadband HF Bursts Active", 14, h - 14);
     } else if (simMode === "PARALLEL_ARC") {
       ctx.fillStyle = "#ff1e2d";
-      ctx.fillText("💥 AFDD SIGNATURE: Parallel Flashover Surge & Synchronous Voltage Sag", 14, h - 14);
+      ctx.fillText("AFDD SIGNATURE: Parallel Flashover Surge & Synchronous Voltage Sag", 14, h - 14);
     } else if (simMode === "SHOCK") {
       ctx.fillStyle = "#ff1e2d";
-      ctx.fillText("⚠️ RCCB SIGNATURE: Vector Imbalance Detected (|IL - IN| = 38.4 mA > 30mA)", 14, h - 14);
+      ctx.fillText("RCCB SIGNATURE: Vector Imbalance Detected (|IL - IN| = 38.4 mA > 30mA)", 14, h - 14);
     } else if (simMode === "EARTH_LEAKAGE") {
       ctx.fillStyle = "#ff0033";
-      ctx.fillText("🔥 RCCB SIGNATURE: Ground Fire Fault (178 mA Earth Leakage)", 14, h - 14);
+      ctx.fillText("RCCB SIGNATURE: Ground Fire Fault (178 mA Earth Leakage)", 14, h - 14);
     } else {
       ctx.fillStyle = "rgba(56, 189, 248, 0.8)";
-      ctx.fillText("✓ SIGNALS NORMAL: Clean Sine Wave • Core Vector in Balance", 14, h - 14);
+      ctx.fillText("SIGNALS NORMAL: Clean Sine Wave • Core Vector in Balance", 14, h - 14);
     }
 
     scopeAnimId = requestAnimationFrame(drawScope);
@@ -858,10 +858,10 @@ function render() {
 
   // Banner subtext
   let sub = `${d.name} (${d.location || "Main Panel"}), updated ${ago(d.updatedAt)}`;
-  if (isAfddTrip) sub += " • ⚡ AFDD Contactor Cut";
-  if (isRccbTrip) sub += " • ⚠️ RCCB Leakage Trip";
-  if (d.flameDetected) sub += " • 🔥 Flame Sensor Triggered";
-  if (d.fireConfirmed) sub += " • 🚨 Fire Confirmed";
+  if (isAfddTrip) sub += " • [AFDD Contactor Cut]";
+  if (isRccbTrip) sub += " • [RCCB Leakage Trip]";
+  if (d.flameDetected) sub += " • [Flame Sensor Triggered]";
+  if (d.fireConfirmed) sub += " • [Fire Confirmed]";
   if (d.ack && s !== "NORMAL") sub += `. Acknowledged${d.ackBy ? " by " + d.ackBy : ""}`;
   $("#bSub").textContent = sub;
 
@@ -877,12 +877,12 @@ function render() {
   if (alarmBtn) {
     alarmBtn.disabled = !can("alarm");
     if (isAlarmActive) {
-      alarmBtn.textContent = "🔕 Silence Alarm & Buzzer";
+      alarmBtn.innerHTML = `<svg class="alarm-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg><span>Silence Hardware Alarm</span>`;
       alarmBtn.style.background = "#ffffff";
       alarmBtn.style.color = "#e50914";
       alarmBtn.style.boxShadow = "0 0 20px rgba(255,255,255,0.7)";
     } else {
-      alarmBtn.textContent = "🚨 Turn on Alarm";
+      alarmBtn.innerHTML = `<svg class="alarm-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span>Trigger Panel Alarm</span>`;
       alarmBtn.style.background = "#e50914";
       alarmBtn.style.color = "#ffffff";
       alarmBtn.style.boxShadow = "0 0 16px rgba(229,9,20,0.6)";
@@ -1057,8 +1057,8 @@ function track(list) {
     const p = prev[d.id];
     if (p && p !== s && s !== "NORMAL") {
       let cause = `${d.temperature} °C, smoke ${d.smoke} ADC`;
-      if (d.afddTrip) cause = `⚡ AFDD Arc Fault Tripped (${d.afdd?.hfNoise?.toFixed(1) || 85} dB)`;
-      else if (d.rccbTrip) cause = `⚠️ RCCB Electric Shock Tripped (${d.residualMa || 38} mA leakage)`;
+      if (d.afddTrip) cause = `AFDD Arc Fault Tripped (${d.afdd?.hfNoise?.toFixed(1) || 85} dB)`;
+      else if (d.rccbTrip) cause = `RCCB Electric Shock Tripped (${d.residualMa || 38} mA leakage)`;
       alerts.unshift({ t: Date.now(), name: d.name || d.id, s, v: cause });
     }
     prev[d.id] = s;
@@ -1199,7 +1199,7 @@ function setupCustomDropdown(selectEl) {
       if (isSel) {
         const check = document.createElement("span");
         check.className = "custom-select-check";
-        check.textContent = "✓";
+        check.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         item.appendChild(check);
       }
 

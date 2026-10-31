@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileToggle.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = navLinks.classList.toggle('open');
-      mobileToggle.textContent = isOpen ? '✕' : '☰';
+      mobileToggle.innerHTML = isOpen ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>';
       mobileToggle.setAttribute('aria-expanded', isOpen);
     });
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navLinks.querySelectorAll('.nav-link').forEach(link => {
       link.addEventListener('click', () => {
         navLinks.classList.remove('open');
-        mobileToggle.textContent = '☰';
+        mobileToggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>';
       });
     });
 
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
       if (!navLinks.contains(e.target) && !mobileToggle.contains(e.target)) {
         navLinks.classList.remove('open');
-        mobileToggle.textContent = '☰';
+        mobileToggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>';
       }
     });
 
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         navLinks.classList.remove('open');
-        mobileToggle.textContent = '☰';
+        mobileToggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>';
       }
     });
   }
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.innerHTML = 'Submitting Request...';
 
       setTimeout(() => {
-        submitBtn.innerHTML = '✓ Pilot Request Received!';
+        submitBtn.innerHTML = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:-2px;margin-right:6px;\"><polyline points=\"20 6 9 17 4 12\"></polyline></svg>Pilot Request Received!';
         submitBtn.style.background = 'var(--fire-red)';
         
         showToast('<strong>Request Received!</strong> Your inquiry has been registered. Our engineering team in Panvel will get in touch with you.');
@@ -617,10 +617,10 @@ document.addEventListener('DOMContentLoaded', () => {
               sparkParticles.push(new SparkParticle(width * 0.45 + (Math.random() - 0.5) * 60, height * 0.5));
             }
             if (demoStatusBadge) {
-              demoStatusBadge.textContent = '⚡ 68.4 kHz ARC DETECTED • SHUNT TRIP FIRED (3.4ms) • BREAKER OPEN';
+              demoStatusBadge.textContent = '68.4 kHz ARC DETECTED • SHUNT TRIP FIRED (3.4ms) • BREAKER OPEN';
               demoStatusBadge.classList.add('alert-active');
             }
-            showToast('<strong>⚡ Micro-Arc Fault Detected!</strong> Autonomous Safety Loop tripped breaker in 3.4ms via solid-state relay. Panel protected.');
+            showToast('<strong>Micro-Arc Fault Detected:</strong> Autonomous Safety Loop tripped breaker in 3.4ms via solid-state relay. Panel protected.');
           });
         }
 
@@ -638,10 +638,10 @@ document.addEventListener('DOMContentLoaded', () => {
               particles.push(sp);
             }
             if (demoStatusBadge) {
-              demoStatusBadge.textContent = '🧯 AEROSOL CANISTER DISCHARGED • FLAME EXTINGUISHED IN 1.8s';
+              demoStatusBadge.textContent = 'AEROSOL CANISTER DISCHARGED • FLAME EXTINGUISHED IN 1.8s';
               demoStatusBadge.classList.add('alert-active');
             }
-            showToast('<strong>🧯 Condensed Aerosol Discharged!</strong> In-panel flame envelope knocked down in under 2 seconds.');
+            showToast('<strong>Condensed Aerosol Discharged:</strong> In-panel flame envelope knocked down in under 2 seconds.');
           });
         }
 
