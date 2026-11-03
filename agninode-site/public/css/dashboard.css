@@ -2063,3 +2063,40 @@ select.has-custom-select {
     grid-template-columns: 1fr;
   }
 }
+/* Audible Alarm Siren Button */
+.btn-audio-mute {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-audio-mute:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.btn-audio-mute.is-muted {
+  background: rgba(0, 0, 0, 0.45) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.btn-audio-mute.is-sounding {
+  animation: audioSirenPulse 0.8s infinite alternate ease-in-out;
+  border-color: #ff1e2d !important;
+}
+
+@keyframes audioSirenPulse {
+  0% { box-shadow: 0 0 6px rgba(229, 9, 20, 0.4); }
+  100% { box-shadow: 0 0 18px rgba(255, 30, 45, 0.85); background: rgba(229, 9, 20, 0.3) !important; }
+}

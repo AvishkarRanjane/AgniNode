@@ -32,12 +32,110 @@ let predHorizonMinutes = 15;
 
 const can = a => (PERM[user?.role] || []).includes(a);
 
+/* ---------- Industrial Piezo Siren & Web Audio Engine ---------- */
+let audioCtx = null;
+let sirenOsc1 = null;
+let sirenMod = null;
+let sirenGain = null;
+let pulseGain = null;
+let isAudioMuted = false;
+let isSirenPlaying = false;
+
+function initAudioContext() {
+  try {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  } catch (e) {}
+}
+
+document.addEventListener("click", () => initAudioContext(), { once: true });
+document.addEventListener("keydown", () => initAudioContext(), { once: true });
+
+function startAlarmSiren() {
+  if (isSirenPlaying || isAudioMuted) return;
+  try {
+    initAudioContext();
+    if (!audioCtx) return;
+
+    // Dual-tone industrial piezo fire siren (880Hz / 659Hz alternating pulses)
+    sirenOsc1 = audioCtx.createOscillator();
+    sirenOsc1.type = "sawtooth";
+    sirenOsc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+    // Warble modulation (3.5 Hz)
+    const modOsc = audioCtx.createOscillator();
+    modOsc.type = "square";
+    modOsc.frequency.setValueAtTime(3.5, audioCtx.currentTime);
+
+    const modGain = audioCtx.createGain();
+    modGain.gain.setValueAtTime(120, audioCtx.currentTime);
+    modOsc.connect(modGain);
+    modGain.connect(sirenOsc1.frequency);
+    modOsc.start();
+    sirenMod = modOsc;
+
+    // Pulsing volume envelope (4 beeps per sec)
+    sirenGain = audioCtx.createGain();
+    sirenGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+
+    const pulseOsc = audioCtx.createOscillator();
+    pulseOsc.type = "square";
+    pulseOsc.frequency.setValueAtTime(4.0, audioCtx.currentTime);
+
+    const pGain = audioCtx.createGain();
+    pGain.gain.setValueAtTime(0.14, audioCtx.currentTime);
+    pulseOsc.connect(pGain);
+    pGain.connect(sirenGain.gain);
+    pulseOsc.start();
+    pulseGain = pulseOsc;
+
+    sirenOsc1.connect(sirenGain);
+    sirenGain.connect(audioCtx.destination);
+    sirenOsc1.start();
+    isSirenPlaying = true;
+
+    const muteBtn = $("#btnAudioMute");
+    if (muteBtn) muteBtn.classList.add("is-sounding");
+  } catch (e) {
+    console.warn("Alarm audio notice:", e);
+  }
+}
+
+function stopAlarmSiren() {
+  if (!isSirenPlaying) return;
+  try {
+    if (sirenGain && audioCtx) {
+      sirenGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    }
+    setTimeout(() => {
+      try {
+        if (sirenOsc1) { sirenOsc1.stop(); sirenOsc1.disconnect(); sirenOsc1 = null; }
+        if (sirenMod) { sirenMod.stop(); sirenMod.disconnect(); sirenMod = null; }
+        if (pulseGain) { pulseGain.stop(); pulseGain.disconnect(); pulseGain = null; }
+      } catch (e) {}
+      isSirenPlaying = false;
+      const muteBtn = $("#btnAudioMute");
+      if (muteBtn) muteBtn.classList.remove("is-sounding");
+    }, 90);
+  } catch (e) {
+    isSirenPlaying = false;
+  }
+}
+
 const eff = d => {
   if (!d) return "OFFLINE";
   const age = Date.now() - (d.updatedAt || 0);
-  if (age > 180000) return "OFFLINE"; // 3 minutes without telemetry = OFFLINE
-  if (d.fireConfirmed || d.flameDetected) return "ALARM";
+  const isManualAlarm = !!d.buzzerOn || !!d.fireConfirmed;
+  const isSimAlarm = simMode === "SERIES_ARC" || simMode === "PARALLEL_ARC" || simMode === "SHOCK" || simMode === "EARTH_LEAKAGE";
+  if (isSimAlarm) return "ALARM";
+  if (isManualAlarm || d.flameDetected) return "ALARM";
   if (d.afddTrip || d.rccbTrip) return "ALARM";
+  if (age > 180000 && !isManualAlarm && !isSimAlarm) return "OFFLINE";
   const st = (d.status || "").toUpperCase();
   if (st === "ALARM") return "ALARM";
   if (st === "WARNING") return "WARNING";
@@ -294,7 +392,8 @@ function demoApi() {
 
     const T = b[3] + 1.8 * Math.sin(t / 3.6e6) + (Math.random() * 0.6);
     const H = b[4] + 4 * Math.cos(t / 5e6) + (Math.random() * 1.2);
-    let S = b[5] + Math.random() * 3 + (spike > 0 && k === "agni-002" ? 140 + spike * 20 : 0);
+    const isManualAlarm = isSelected && (st[k]?.buzzerOn || st[k]?.fireConfirmed);
+    let S = isManualAlarm ? (340 + Math.random() * 25) : (b[5] + Math.random() * 3 + (spike > 0 && k === "agni-002" ? 140 + spike * 20 : 0));
 
     // Realistic Electrical Model
     let V = b[6] + 1.5 * Math.sin(t / 1.2e5) + (Math.random() * 0.8);
@@ -323,7 +422,7 @@ function demoApi() {
     const rccb = analyzeRCCB(IL, IN, activeFault);
 
     let status = calc(T, S);
-    if (afdd.trip || rccb.trip) {
+    if (afdd.trip || rccb.trip || isManualAlarm) {
       status = "ALARM";
     }
 
@@ -378,6 +477,7 @@ function demoApi() {
     else if (spike > 0) spike--;
 
     D.forEach(b => {
+      const isManualAlarm = (b[0] === sel || (!sel && b[0] === "agni-001")) && (st[b[0]]?.buzzerOn || st[b[0]]?.fireConfirmed);
       const r = mk(b, Date.now(), b[0]);
       hist[b[0]].push(r);
       if (hist[b[0]].length > 1000) hist[b[0]].shift();
@@ -385,7 +485,11 @@ function demoApi() {
         ...st[b[0]],
         ...r,
         updatedAt: Date.now(),
-        ack: r.status === "NORMAL" ? false : st[b[0]].ack
+        status: isManualAlarm ? "ALARM" : r.status,
+        smoke: isManualAlarm ? Math.max(340, st[b[0]].smoke || 350) : r.smoke,
+        buzzerOn: isManualAlarm,
+        fireConfirmed: isManualAlarm,
+        ack: (r.status === "NORMAL" && !isManualAlarm) ? false : st[b[0]].ack
       };
     });
     push();
@@ -429,8 +533,10 @@ function demoApi() {
         st[id].buzzerOn = active;
         st[id].fireConfirmed = active;
         st[id].smoke = active ? 350 : 12;
+        st[id].ack = false;
         st[id].updatedAt = Date.now();
         push();
+        render();
       }
     },
     getTh: async () => TH,
@@ -1270,9 +1376,26 @@ function render() {
   const b = $("#banner");
   b.dataset.s = s;
 
+  // Current Electrical Readings & Dynamic Trip Evaluation
+  const volt = d.voltage ?? 230.0;
+  const currL = d.currentL ?? 12.4;
+  const currN = d.currentN ?? (currL - 0.006);
+  const afdd = analyzeAFDD(volt, currL, simMode);
+  const rccb = analyzeRCCB(currL, currN, simMode);
+  d.afdd = afdd;
+  d.rccb = rccb;
+
   // Banner status title
-  const isAfddTrip = d.afdd?.trip || d.afddTrip;
-  const isRccbTrip = d.rccb?.trip || d.rccbTrip;
+  const isAfddTrip = afdd.trip || d.afddTrip || simMode === "SERIES_ARC" || simMode === "PARALLEL_ARC";
+  const isRccbTrip = rccb.trip || d.rccbTrip || simMode === "SHOCK" || simMode === "EARTH_LEAKAGE";
+  const isAlarmActive = s === "ALARM" || !!d?.buzzerOn || !!d?.fireConfirmed || isAfddTrip || isRccbTrip;
+
+  // Audio Siren Management
+  if (isAlarmActive && !d.ack) {
+    startAlarmSiren();
+  } else {
+    stopAlarmSiren();
+  }
 
   if (s === "ALARM") {
     if (isAfddTrip && isRccbTrip) {
@@ -1318,7 +1441,6 @@ function render() {
   $("#bSub").textContent = sub;
 
   // Alarm buttons
-  const isAlarmActive = s === "ALARM" || !!d.buzzerOn || !!d.fireConfirmed;
   const ab = $("#ack");
   if (ab) {
     ab.classList.toggle("hide", !isAlarmActive && s !== "WARNING");
@@ -1355,9 +1477,6 @@ function render() {
   $("#cS").textContent = `Warning at ${TH.smokeWarn} ADC, alarm at ${TH.smokeAlarm} ADC`;
 
   // 2. Electrical Sensor KPIs
-  const volt = d.voltage ?? 230.0;
-  const currL = d.currentL ?? 12.5;
-  const currN = d.currentN ?? 12.49;
   const resMa = d.residualMa ?? (Math.abs(currL - currN) * 1000);
 
   $("#kV").innerHTML = u(volt, "V");
@@ -1388,7 +1507,7 @@ function render() {
   }
 
   // 3. AFDD Arc Fault Analytical Engine Display
-  const afdd = d.afdd || analyzeAFDD(volt, currL, simMode);
+  // afdd already evaluated at start of render
   $("#afddHfVal").textContent = afdd.hfNoise.toFixed(1) + " dB";
   $("#afddShoulderVal").textContent = afdd.shoulderMs.toFixed(2) + " ms";
   $("#afddErrVal").textContent = afdd.erraticismPct.toFixed(1) + "%";
@@ -1437,7 +1556,7 @@ function render() {
   }
 
   // 4. RCCB / RCD Shock & Leakage Engine Display
-  const rccb = d.rccb || analyzeRCCB(currL, currN, simMode);
+  // rccb already evaluated at start of render
   $("#rccbIL").textContent = currL.toFixed(2) + " A";
   $("#rccbIN").textContent = currN.toFixed(2) + " A";
   $("#rccbIdeltaVal").textContent = rccb.ideltaMa.toFixed(1) + " mA";
@@ -1771,13 +1890,48 @@ $("#simActions").onclick = e => {
 
 $("#btnSimReset").onclick = () => {
   simMode = "NORMAL";
+  stopAlarmSiren();
+  const d = devs.find(x => x.id === sel);
+  if (d) {
+    d.buzzerOn = false;
+    d.fireConfirmed = false;
+    d.ack = false;
+  }
   document.querySelectorAll(".sim-actions .sim-btn").forEach(x => x.classList.remove("active"));
   $("#btnSimNormal").classList.add("active");
+  if (api?.setAlarm) api.setAlarm(sel, false);
   if (api?.triggerSim) api.triggerSim("NORMAL");
   else render();
 };
 
-$("#ack").onclick = () => api.ack(sel).catch(e => alert("Could not acknowledge: " + e.message));
+// Audible Alarm Siren Mute Toggle
+const muteBtn = $("#btnAudioMute");
+if (muteBtn) {
+  muteBtn.onclick = () => {
+    initAudioContext();
+    isAudioMuted = !isAudioMuted;
+    muteBtn.classList.toggle("is-muted", isAudioMuted);
+    const txt = $("#txtAudioMute");
+    const svg = $("#svgAudioMute");
+    if (isAudioMuted) {
+      if (txt) txt.textContent = "Muted";
+      if (svg) svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+      stopAlarmSiren();
+    } else {
+      if (txt) txt.textContent = "Sound On";
+      if (svg) svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+      const d = devs.find(x => x.id === sel);
+      if (d && (eff(d) === "ALARM" || !!d.buzzerOn || !!d.fireConfirmed) && !d.ack) {
+        startAlarmSiren();
+      }
+    }
+  };
+}
+
+$("#ack").onclick = () => {
+  stopAlarmSiren();
+  api.ack(sel).catch(e => alert("Could not acknowledge: " + e.message));
+};
 
 const toggleBtn = $("#alarmToggle");
 if (toggleBtn) {
@@ -1788,11 +1942,13 @@ if (toggleBtn) {
     const nextState = !isAlarmActive;
     toggleBtn.disabled = true;
     try {
+      initAudioContext();
       await api.setAlarm(sel, nextState);
       if (d) {
         d.status = nextState ? "ALARM" : "NORMAL";
         d.buzzerOn = nextState;
         d.fireConfirmed = nextState;
+        d.ack = false;
         d.updatedAt = Date.now();
         render();
       }
