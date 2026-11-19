@@ -9,3 +9,13 @@ Thumbs.db
 
 agninode-design-package.zip
 agninode-design-package/
+
+# Environment and Secrets
+.env*
+*.pem
+*.key
+
+# Build outputs
+dist/
+build/
+.vercel
